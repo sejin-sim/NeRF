@@ -32,12 +32,14 @@ class NeRFSystem(LightningModule):
 
         self.loss = loss_dict[hparams.loss_type]()    # MSE
 
-        self.embedding_xyz = Embedding(3, 10) # 10 is the default number
-        self.embedding_dir = Embedding(3, 4)  # 4 is the default number
+        # Positional encoding : 저주파 → 고주파
+        self.embedding_xyz = Embedding(3, 10) # L = 10 for xzy : 고정 (논문)
+        self.embedding_dir = Embedding(3, 4)  # L = 4 for dir : 고정 (논문)
         self.embeddings = [self.embedding_xyz, self.embedding_dir]
 
         self.nerf_coarse = NeRF()             # 거친 네트워크
         self.models = [self.nerf_coarse]
+
         if hparams.N_importance > 0:          # fine sample 갯수가 0개 이상으로 지정된 경우
             self.nerf_fine = NeRF()           # 미세 네트워크
             self.models += [self.nerf_fine]
@@ -100,7 +102,8 @@ class NeRFSystem(LightningModule):
                           num_workers=4,
                           batch_size=1, # validate one image (H*W rays) at a time
                           pin_memory=True)
-    
+
+    # 전체 훈련 반복
     def training_step(self, batch, batch_nb):
         log = {'lr': get_learning_rate(self.optimizer)}
         rays, rgbs = self.decode_batch(batch)
